@@ -7,7 +7,7 @@
 要求 Go 1.21.13 或以上版本。
 
 ```sh
-go get github.com/anheicang/xinlin@v0.1.1
+go get github.com/anheicang/xinlin@v0.1.2
 ```
 
 在业务项目中按需导入子包；`go get` 将组件作为依赖管理，源码由 Go module cache 管理，无需再复制到项目目录。如需将依赖源码随项目保存，可执行 `go mod vendor`。
@@ -94,10 +94,12 @@ go build ./...
 
 GitHub Actions 自动检查格式、依赖一致性、静态分析、竞态测试及编译。普通测试使用本地 HTTP 服务或模拟数据，不需要真实云服务凭证。真实 STS 测试默认跳过，只有设置 `XINLIN_OSS_STS_INTEGRATION=1` 和 `XINLIN_OSS_CONFIG_FILE`（包含 `Oss` 节点的本地 YAML 路径）才会调用阿里云。
 
-发布使用语义化版本标签，例如 `v0.1.1`；项目中固定版本升级，避免依赖浮动分支：
+全部组件包均已补齐单元测试，总语句覆盖率为 98.1%。测试范围、覆盖率明细和报告生成方式见 [TESTING.md](TESTING.md)。
+
+发布使用语义化版本标签，例如 `v0.1.2`；项目中固定版本升级，避免依赖浮动分支：
 
 ```sh
-go get github.com/anheicang/xinlin@v0.1.1
+go get github.com/anheicang/xinlin@v0.1.2
 go mod tidy
 ```
 

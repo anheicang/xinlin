@@ -2,6 +2,7 @@
 *.test
 coverage.out
 coverage.html
+coverage.txt
 logs/
 .env
 .env.*

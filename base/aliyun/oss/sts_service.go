@@ -97,7 +97,7 @@ func (s *STSService) assumeRole(sessionName string) (*STSCredentials, error) {
 		Endpoint:        tea.String("sts." + stsEndpoint),
 	}
 
-	client, err := sts.NewClient(config)
+	client, err := newSTSClient(config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create STS client: %w", err)
 	}

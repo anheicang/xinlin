@@ -53,7 +53,7 @@ func (f *OSSClientFactory) createClientWithCredentials(cred *STSCredentials) (*o
 		return nil, fmt.Errorf("OSS endpoint is not configured")
 	}
 
-	client, err := oss.New(
+	client, err := newOSSClient(
 		ossEndpoint,
 		cred.AccessKeyId,
 		cred.AccessKeySecret,

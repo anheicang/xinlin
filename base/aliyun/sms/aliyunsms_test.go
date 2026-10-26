@@ -49,3 +49,16 @@ func TestSendMessageInitializesSDKAndChecksBusinessCode(t *testing.T) {
 		t.Fatal("nil client accepted")
 	}
 }
+
+func TestInvalidSMSMessageContent(t *testing.T) {
+	c, err := NewSmsClient(AliyunSmsConfig{RegionId: "cn-hangzhou", AccessKey: "test", AccessSecret: "test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := c.SendMessage(nil); err == nil {
+		t.Fatal("nil message accepted")
+	}
+	if err := c.SendMessage(&SmsMessage{Content: map[string]interface{}{"invalid": make(chan int)}}); err == nil {
+		t.Fatal("non-serializable content accepted")
+	}
+}

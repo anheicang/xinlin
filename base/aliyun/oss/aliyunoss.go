@@ -43,7 +43,7 @@ func GetOssSts(c AliyunOssConfig, roleSessionName string) (*sts.AssumeRoleRespon
 		Endpoint:        tea.String("sts." + c.StsEndpoint),
 	}
 
-	client, err := sts.NewClient(config)
+	client, err := newSTSClient(config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create STS client: %w", err)
 	}
@@ -66,7 +66,7 @@ func GetOssSts(c AliyunOssConfig, roleSessionName string) (*sts.AssumeRoleRespon
 // Deprecated: 建议使用 NewUploader 或 NewOSSClientFactory（使用 STS 临时凭证更安全）
 func NewAliyunOssClient(c AliyunOssConfig) (*AliyunOssClient, error) {
 	endpoint := c.GetOssEndpoint()
-	client, err := oss.New(endpoint, c.AccessKeyId, c.AccessKeySecret)
+	client, err := newOSSClient(endpoint, c.AccessKeyId, c.AccessKeySecret)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +82,7 @@ func NewAliyunOssClientWithSTS(c AliyunOssConfig, sessionName string) (*AliyunOs
 	}
 
 	endpoint := c.GetOssEndpoint()
-	client, err := oss.New(
+	client, err := newOSSClient(
 		endpoint,
 		cred.AccessKeyId,
 		cred.AccessKeySecret,
