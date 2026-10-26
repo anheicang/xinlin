@@ -1,0 +1,10 @@
+*.exe
+*.test
+coverage.out
+coverage.html
+logs/
+.env
+.env.*
+*_local.yaml
+go.work
+go.work.sum
