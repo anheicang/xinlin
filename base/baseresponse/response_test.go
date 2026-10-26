@@ -1,3 +1,5 @@
+// 文件用途：验证统一响应成功、业务失败、HTTP 错误及内部异常脱敏；验证业务错误附加数据与旧版响应入口的一致性。
+
 package baseresponse_test
 
 import (
@@ -13,6 +15,7 @@ import (
 	"github.com/anheicang/xinlin/base/baseresponse"
 )
 
+// TestResponseContract 验证统一响应成功、业务失败、HTTP 错误及内部异常脱敏。
 func TestResponseContract(t *testing.T) {
 	for _, tt := range []struct {
 		name   string
@@ -51,6 +54,7 @@ func TestResponseContract(t *testing.T) {
 	}
 }
 
+// TestBusinessErrorDataAndLegacyResponse 验证业务错误附加数据与旧版响应入口的一致性。
 func TestBusinessErrorDataAndLegacyResponse(t *testing.T) {
 	for _, legacy := range []bool{false, true} {
 		w := httptest.NewRecorder()

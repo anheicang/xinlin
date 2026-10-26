@@ -1,3 +1,5 @@
+// 文件用途：验证微信网络错误即使被下游展开也不泄露 URL 凭证或内部错误；验证脱敏请求层保留成功响应和业务错误码。
+
 package wxapi
 
 import (
@@ -14,10 +16,13 @@ import (
 	"github.com/go-resty/resty/v2"
 )
 
+// fakeTransport 用于离线微信接口的 HTTP 传输函数适配器。
 type fakeTransport func(*http.Request) (*http.Response, error)
 
+// RoundTrip 将 HTTP 请求交给测试处理函数，不访问真实供应商接口。
 func (f fakeTransport) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
 
+// TestWXTransportErrorsNeverExposeCredentialURLOrNestedError 验证微信网络错误即使被下游展开也不泄露 URL 凭证或内部错误。
 func TestWXTransportErrorsNeverExposeCredentialURLOrNestedError(t *testing.T) {
 	for _, cause := range []error{errors.New("upstream PRIVATE_NESTED"), context.DeadlineExceeded, context.Canceled} {
 		client := resty.New().SetTransport(fakeTransport(func(r *http.Request) (*http.Response, error) {
@@ -41,6 +46,7 @@ func TestWXTransportErrorsNeverExposeCredentialURLOrNestedError(t *testing.T) {
 	}
 }
 
+// TestWXRequestPreservesSuccessAndBusinessErrorCode 验证脱敏请求层保留成功响应和业务错误码。
 func TestWXRequestPreservesSuccessAndBusinessErrorCode(t *testing.T) {
 	client := resty.New().SetTransport(fakeTransport(func(r *http.Request) (*http.Response, error) {
 		if r.URL.Query().Get("access_token") != "PRIVATE_TOKEN" {

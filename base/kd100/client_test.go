@@ -1,3 +1,5 @@
+// 文件用途：验证快递100表单、签名、手机号和扩展轨迹参数；验证手机号为空时不会发送多余字段。
+
 package kd100
 
 import (
@@ -13,6 +15,7 @@ import (
 	"testing"
 )
 
+// TestQueryExpressUsesDocumentedRequestFormat 验证快递100表单、签名、手机号和扩展轨迹参数。
 func TestQueryExpressUsesDocumentedRequestFormat(t *testing.T) {
 	const customer = "customer"
 	const key = "secret"
@@ -62,6 +65,7 @@ func TestQueryExpressUsesDocumentedRequestFormat(t *testing.T) {
 	}
 }
 
+// TestQueryExpressAllowsOptionalPhone 验证手机号为空时不会发送多余字段。
 func TestQueryExpressAllowsOptionalPhone(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		body, _ := io.ReadAll(req.Body)
@@ -79,6 +83,7 @@ func TestQueryExpressAllowsOptionalPhone(t *testing.T) {
 	}
 }
 
+// TestQueryExpressRejectsInvalidTrackingNumberLength 验证过短运单号在网络请求前被拒绝。
 func TestQueryExpressRejectsInvalidTrackingNumberLength(t *testing.T) {
 	_, err := NewClient("customer", "secret", "https://example.com").QueryExpress(context.Background(), NewQueryRequest("ems", "12345", ""))
 	if err == nil || !strings.Contains(err.Error(), "6至32") {

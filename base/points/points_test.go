@@ -1,7 +1,10 @@
+// 文件用途：验证非负两位小数转整数分及常见非法金额输入；验证大整数比例计算和分批退款累计分值守恒。
+
 package points
 
 import "testing"
 
+// TestParsePointsToFen 验证非负两位小数转整数分及常见非法金额输入。
 func TestParsePointsToFen(t *testing.T) {
 	for input, want := range map[string]int64{"0": 0, "0.01": 1, "0.29": 29, "1": 100, "12.34": 1234, "498": 49800, "0001.20": 120} {
 		got, err := Parse(input)
@@ -19,6 +22,7 @@ func TestParsePointsToFen(t *testing.T) {
 	}
 }
 
+// TestProportionConservesFenWithoutIntermediateOverflow 验证大整数比例计算和分批退款累计分值守恒。
 func TestProportionConservesFenWithoutIntermediateOverflow(t *testing.T) {
 	if Proportion(900000000000, 900000000000, 900000000000) != 900000000000 {
 		t.Fatal("overflow")

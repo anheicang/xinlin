@@ -1,3 +1,5 @@
+// 文件用途：验证不同上下文 ID 类型、token 匹配及身份不一致时的拒绝行为；验证损坏/过期 JWT、旧权限字段及认证上下文回退规则。
+
 package authentication
 
 import (
@@ -15,6 +17,7 @@ import (
 	"github.com/zeromicro/go-zero/core/stores/redis"
 )
 
+// signedClaims 使用固定测试密钥生成指定 claims，构造 JWT 成功和异常场景。
 func signedClaims(t *testing.T, claims jwt.MapClaims) string {
 	t.Helper()
 	token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte("secret"))
@@ -24,6 +27,7 @@ func signedClaims(t *testing.T, claims jwt.MapClaims) string {
 	return token
 }
 
+// TestRequestIdentityAndValidation 验证不同上下文 ID 类型、token 匹配及身份不一致时的拒绝行为。
 func TestRequestIdentityAndValidation(t *testing.T) {
 	for _, value := range []interface{}{json.Number("42"), int64(42), float64(42), "42", nil, true} {
 		r := httptest.NewRequest("GET", "/", nil)
@@ -56,6 +60,7 @@ func TestRequestIdentityAndValidation(t *testing.T) {
 	}
 }
 
+// TestJWTRejectionPermissionsAndContextFallback 验证损坏/过期 JWT、旧权限字段及认证上下文回退规则。
 func TestJWTRejectionPermissionsAndContextFallback(t *testing.T) {
 	if token, err := GetJwtToken("secret", 3600, 42); err != nil || token == "" {
 		t.Fatal("JWT convenience wrapper failed", err)
@@ -105,6 +110,7 @@ func TestJWTRejectionPermissionsAndContextFallback(t *testing.T) {
 	}
 }
 
+// TestDataScopeRulesAndEmptyContext 验证空身份默认值、商户/用户范围判断和会话 ID 格式。
 func TestDataScopeRulesAndEmptyContext(t *testing.T) {
 	ctx := context.Background()
 	if CtxUserId(ctx) != 0 || len(CtxPerms(ctx)) != 0 || CtxClientType(ctx) != "" || CtxSessionId(ctx) != "" || CtxShopId(ctx) != 0 {
@@ -133,6 +139,7 @@ func TestDataScopeRulesAndEmptyContext(t *testing.T) {
 	}
 }
 
+// TestSessionLifecycleAndInvalidArguments 验证会话保存、读取、删除、无效参数及损坏 JSON 的处理。
 func TestSessionLifecycleAndInvalidArguments(t *testing.T) {
 	s, r := testRedis(t)
 	ctx := context.Background()
@@ -171,6 +178,7 @@ func TestSessionLifecycleAndInvalidArguments(t *testing.T) {
 	}
 }
 
+// TestTokenVersionInputsStorageAndCorruption 验证登录版本初始化、不同客户端、非法数据和 Redis 故障。
 func TestTokenVersionInputsStorageAndCorruption(t *testing.T) {
 	s, r := testRedis(t)
 	ctx := context.Background()

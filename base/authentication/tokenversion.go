@@ -1,3 +1,5 @@
+// 文件用途：维护登录态版本，使业务项目能通过递增版本撤销旧 token。
+
 package authentication
 
 import (
@@ -11,6 +13,7 @@ import (
 )
 
 const (
+	// 默认登录版本从 1 开始，撤销时必须递增到更大的值。
 	defaultTokenVersion int64 = 1
 
 	tokenVersionKeySysUserFormat    = "jv_sys_user:%d"
@@ -18,6 +21,8 @@ const (
 	tokenVersionKeyMemberUserFormat = "jv_member_user:%d"
 )
 
+// buildTokenVersionKey 按客户端、商户和用户构造登录版本 key。
+// app 用户使用平台级 key，不按商户拆分；非法客户端或 ID 返回错误。
 func buildTokenVersionKey(clientType string, shopId, uid int64) (string, error) {
 	if uid <= 0 {
 		return "", errors.New("invalid token version uid")
@@ -38,6 +43,8 @@ func buildTokenVersionKey(clientType string, shopId, uid int64) (string, error) 
 	}
 }
 
+// GetTokenVersion 读取当前登录版本，缺失时以默认版本 1 初始化。
+// 业务中间件可将会话中的版本与此结果比较，以拒绝已撤销的登录。
 func GetTokenVersion(ctx context.Context, redisClient *redis.Redis, clientType string, shopId, uid int64) (int64, error) {
 	if redisClient == nil || uid <= 0 {
 		err := errors.New("invalid token version args")
@@ -84,6 +91,8 @@ func GetTokenVersion(ctx context.Context, redisClient *redis.Redis, clientType s
 	return version, nil
 }
 
+// IncrTokenVersion 原子递增登录版本，使旧版本 token/会话失效。
+// key 缺失时先初始化为 1 再递增，首次撤销返回 2；业务方需实际执行版本比对。
 func IncrTokenVersion(ctx context.Context, redisClient *redis.Redis, clientType string, shopId, uid int64) (int64, error) {
 	if redisClient == nil || uid <= 0 {
 		err := errors.New("invalid token version args")
@@ -96,6 +105,7 @@ func IncrTokenVersion(ctx context.Context, redisClient *redis.Redis, clientType 
 		logx.Errorf("IncrTokenVersion buildTokenVersionKey error uid=%d shopId=%d clientType=%s err=%v", uid, shopId, clientType, err)
 		return 0, err
 	}
+	// 初始化与递增放在同一个 Lua 请求中，避免缺失 key 时 INCR 只产生仍有效的版本 1。
 	result, err := redisClient.EvalCtx(ctx, `
 redis.call('SET', KEYS[1], ARGV[1], 'NX')
 return redis.call('INCR', KEYS[1])`, []string{key}, defaultTokenVersion)

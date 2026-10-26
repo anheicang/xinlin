@@ -1,3 +1,5 @@
+// 文件用途：验证微信客户端默认超时及非法配置处理；验证微信各接口的成功结果和关键请求参数。
+
 package wxapi
 
 import (
@@ -14,6 +16,7 @@ import (
 	"github.com/zeromicro/go-zero/core/stores/redis"
 )
 
+// wxRedis 为当前测试创建独立 Redis 和微信辅助服务，避免共享缓存。
 func wxRedis(t *testing.T) (*miniredis.Miniredis, *WxHelper, *OpenPlatformWebHelper, Config) {
 	t.Helper()
 	s := miniredis.RunT(t)
@@ -26,6 +29,7 @@ func wxRedis(t *testing.T) (*miniredis.Miniredis, *WxHelper, *OpenPlatformWebHel
 	return s, w, o, c
 }
 
+// mockWXResponse 注入指定 HTTP 状态、响应内容或网络错误，测试后恢复客户端工厂。
 func mockWXResponse(t *testing.T, status int, body string, failure error) {
 	t.Helper()
 	previous := newWXClient
@@ -40,6 +44,7 @@ func mockWXResponse(t *testing.T, status int, body string, failure error) {
 	t.Cleanup(func() { newWXClient = previous })
 }
 
+// TestWXConstructorsAndClientDefaults 验证微信客户端默认超时及非法配置处理。
 func TestWXConstructorsAndClientDefaults(t *testing.T) {
 	if newWXClient().GetClient().Timeout <= 0 {
 		t.Fatal("request timeout missing")
@@ -56,6 +61,7 @@ func TestWXConstructorsAndClientDefaults(t *testing.T) {
 	}
 }
 
+// TestWXMethodsSuccessAndPayloads 验证微信各接口的成功结果和关键请求参数。
 func TestWXMethodsSuccessAndPayloads(t *testing.T) {
 	_, w, o, c := wxRedis(t)
 	mockWX(t, func(req *http.Request) string {
@@ -104,6 +110,7 @@ func TestWXMethodsSuccessAndPayloads(t *testing.T) {
 	}
 }
 
+// TestWXFailureMatrix 逐接口验证 HTTP、JSON、微信业务码及网络失败。
 func TestWXFailureMatrix(t *testing.T) {
 	for _, scenario := range []struct {
 		name   string
@@ -136,6 +143,7 @@ func TestWXFailureMatrix(t *testing.T) {
 	}
 }
 
+// TestWXTokenMissAndCacheWriteFailures 验证应用 token 缓存缺失、写入失败和获取失败的处理。
 func TestWXTokenMissAndCacheWriteFailures(t *testing.T) {
 	for _, failCache := range []bool{false, true} {
 		t.Run(fmt.Sprint(failCache), func(t *testing.T) {
@@ -184,6 +192,7 @@ func TestWXTokenMissAndCacheWriteFailures(t *testing.T) {
 	}
 }
 
+// TestPhoneTokenRefreshAndRetryFailures 验证手机号查询刷新过期 token 后只重试一次，并返回重试错误。
 func TestPhoneTokenRefreshAndRetryFailures(t *testing.T) {
 	for _, secondBody := range []string{`{"phone_info":{"phoneNumber":"phone"}}`, `{"errcode":40003}`, `not-json`} {
 		t.Run(secondBody, func(t *testing.T) {

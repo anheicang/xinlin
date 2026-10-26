@@ -1,3 +1,5 @@
+// 文件用途：封装小程序登录、手机号换取和公众号用户/关注列表查询。
+
 package wxapi
 
 import (
@@ -9,10 +11,13 @@ import (
 	"github.com/zeromicro/go-zero/core/stores/redis"
 )
 
+// WxHelper 封装小程序相关操作，复用 Redis 中的应用 token。
 type WxHelper struct {
-	RedisConn *redis.Redis
+	RedisConn *redis.Redis // 复用的 Redis 客户端。
 }
 
+// NewWxHelper 创建使用指定 Redis 配置的小程序辅助服务。
+// 初始化失败沿用旧接口返回 nil，调用方必须检查后再使用。
 func NewWxHelper(redisConfig redis.RedisConf) *WxHelper {
 	redisConn, err := redis.NewRedis(redisConfig)
 	if err != nil {
@@ -23,6 +28,8 @@ func NewWxHelper(redisConfig redis.RedisConf) *WxHelper {
 	}
 }
 
+// Login 使用小程序一次性 code 调用 jscode2session，返回 OpenID/UnionID。
+// HTTP 失败、JSON 无效或微信业务错误均返回错误；不在此处签发本项目 JWT。
 func (w *WxHelper) Login(code string, config Config) (*WxLoginResponse, error) {
 	url := "https://api.weixin.qq.com/sns/jscode2session?appid=%s&secret=%s&js_code=%s&grant_type=authorization_code"
 	// 合成url, 这里的appId和secret是在微信公众平台上获取的
@@ -51,6 +58,7 @@ func (w *WxHelper) Login(code string, config Config) (*WxLoginResponse, error) {
 	return wxResp, err
 }
 
+// handleAccessToken 请求新的应用级 access_token 并缓存 7000 秒，供手机号等接口复用。
 func (w *WxHelper) handleAccessToken(appId, secret string) (string, error) {
 	token, err := GetAccessToken(appId, secret)
 	if err != nil {
@@ -65,6 +73,8 @@ func (w *WxHelper) handleAccessToken(appId, secret string) (string, error) {
 	return token, nil
 }
 
+// GetPhoneData 使用微信手机号授权 code 换取手机号。
+// 应用 token 无效或过期时刷新并重试一次，不会无限重试。
 func (w *WxHelper) GetPhoneData(code string, config Config) (*WxResponse, error) {
 	accessToken, err := w.RedisConn.Get(fmt.Sprintf(AccessTokenKey, config.AppId))
 	if accessToken == "" {
@@ -116,7 +126,7 @@ func (w *WxHelper) GetPhoneData(code string, config Config) (*WxResponse, error)
 const Get_User_Info = "https://api.weixin.qq.com/cgi-bin/user/info?access_token=%s&openid=%s&lang=zh_CN"
 const Get_Follow_List = "https://api.weixin.qq.com/cgi-bin/user/get?access_token=%s&next_openid=%s"
 
-// GetUserInfo 公众号获取用户基本信息
+// GetUserInfo 使用公众号 access_token 和 OpenID 查询用户基本信息，检查微信 errcode。
 func GetUserInfo(openid, token string) (*GetUserInfoResp, error) {
 	respInfo := new(GetUserInfoResp)
 	getTokenURL := fmt.Sprintf(Get_User_Info, token, openid)
@@ -138,7 +148,8 @@ func GetUserInfo(openid, token string) (*GetUserInfoResp, error) {
 	return respInfo, nil
 }
 
-// GetFollowUserList 公众号获取用户关注列表
+// GetFollowUserList 查询公众号关注列表的第一页，检查微信 errcode。
+// 当前接口未接收 next_openid 参数，不会自动拉取后续分页。
 func GetFollowUserList(token string) (*GetFollowUserListResp, error) {
 	respInfo := new(GetFollowUserListResp)
 	getTokenURL := fmt.Sprintf(Get_Follow_List, token, "")

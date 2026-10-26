@@ -1,3 +1,5 @@
+// 文件用途：验证底层 JSON 字段、HTTP 状态和 Content-Type。
+
 package proto
 
 import (
@@ -7,6 +9,7 @@ import (
 	"testing"
 )
 
+// TestHTTPResponses 验证底层 JSON 字段、HTTP 状态和 Content-Type。
 func TestHTTPResponses(t *testing.T) {
 	for _, tt := range []struct {
 		name   string

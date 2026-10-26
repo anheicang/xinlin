@@ -1,3 +1,5 @@
+// 文件用途：从公开 API 验证身份传播、权限读取及商户/用户隔离。
+
 package authentication_test
 
 import (
@@ -7,6 +9,7 @@ import (
 	"github.com/anheicang/xinlin/base/authentication"
 )
 
+// TestPublicAuthContextAndDataScopes 从公开 API 验证身份传播、权限读取及商户/用户隔离。
 func TestPublicAuthContextAndDataScopes(t *testing.T) {
 	ctx := context.Background()
 	if authentication.CanAccessShop(ctx, 8) || authentication.CanAccessUser(ctx, 42) {

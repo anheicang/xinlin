@@ -1,3 +1,5 @@
+// 文件用途：验证关闭 SQL 日志后仍执行数据库操作，并保留业务错误日志。
+
 package safelog
 
 import (
@@ -14,13 +16,25 @@ import (
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
 
+// fakeSQLDriver 创建纯内存模拟连接，避免 SQL 日志测试访问真实数据库。
 type fakeSQLDriver struct{}
+
+// fakeSQLConn 模拟 SQL 执行、耗时及错误，验证日志开关不会改变数据库行为。
 type fakeSQLConn struct{}
 
-func (fakeSQLDriver) Open(string) (driver.Conn, error)  { return fakeSQLConn{}, nil }
+// Open 返回模拟数据库连接，不连接真实数据库。
+func (fakeSQLDriver) Open(string) (driver.Conn, error) { return fakeSQLConn{}, nil }
+
+// Prepare 拒绝本测试不使用的预编译入口，防止意外绕过模拟执行路径。
 func (fakeSQLConn) Prepare(string) (driver.Stmt, error) { return nil, errors.New("not used") }
-func (fakeSQLConn) Close() error                        { return nil }
-func (fakeSQLConn) Begin() (driver.Tx, error)           { return nil, errors.New("not used") }
+
+// Close 完成测试替身的无副作用资源关闭。
+func (fakeSQLConn) Close() error { return nil }
+
+// Begin 拒绝本测试未实现的事务入口。
+func (fakeSQLConn) Begin() (driver.Tx, error) { return nil, errors.New("not used") }
+
+// ExecContext 验证 SQL 参数未被日志组件改动，并模拟成功或失败执行。
 func (fakeSQLConn) ExecContext(_ context.Context, query string, args []driver.NamedValue) (driver.Result, error) {
 	if len(args) != 1 || args[0].Value != "PRIVATE_SQL_PARAMETER" {
 		return nil, errors.New("parameters changed")
@@ -34,6 +48,7 @@ func (fakeSQLConn) ExecContext(_ context.Context, query string, args []driver.Na
 
 var registerFake sync.Once
 
+// TestSQLStatementLoggingDisabledWithoutDisablingBusinessLogs 验证关闭 SQL 日志后仍执行数据库操作，并保留业务错误日志。
 func TestSQLStatementLoggingDisabledWithoutDisablingBusinessLogs(t *testing.T) {
 	output := capture(t)
 	DisableSQLStatements()

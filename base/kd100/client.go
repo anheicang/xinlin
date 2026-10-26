@@ -1,3 +1,5 @@
+// 文件用途：构造快递100表单请求和签名，执行查询并校验 HTTP 与业务响应。
+
 package kd100
 
 import (
@@ -17,17 +19,21 @@ import (
 
 const maxErrorBodySize = 2048
 
+// Client 保存快递100配置和可注入的 HTTP 客户端，不包含业务数据。
 type Client struct {
-	customer   string
-	key        string
-	apiURL     string
-	httpClient *http.Client
+	customer   string       // 快递100客户标识。
+	key        string       // 快递100签名密钥。
+	apiURL     string       // 快递100查询接口地址。
+	httpClient *http.Client // HTTP 执行器，负责超时、连接与传输策略。
 }
 
+// NewClient 创建快递100客户端，默认 HTTP 超时为 30 秒。
 func NewClient(customer, key, apiURL string) *Client {
 	return NewClientWithHTTPClient(customer, key, apiURL, &http.Client{Timeout: 30 * time.Second})
 }
 
+// NewClientWithHTTPClient 创建使用指定 HTTP 客户端的查询器，便于统一超时策略或注入测试传输层。
+// httpClient 为 nil 时使用默认 30 秒超时；配置中的首尾空白会被清理。
 func NewClientWithHTTPClient(customer, key, apiURL string, httpClient *http.Client) *Client {
 	if httpClient == nil {
 		httpClient = &http.Client{Timeout: 30 * time.Second}
@@ -35,15 +41,20 @@ func NewClientWithHTTPClient(customer, key, apiURL string, httpClient *http.Clie
 	return &Client{customer: strings.TrimSpace(customer), key: strings.TrimSpace(key), apiURL: strings.TrimSpace(apiURL), httpClient: httpClient}
 }
 
+// Enabled 判断快递客户端是否具有 customer、key 和接口地址；nil 客户端返回 false。
 func (c *Client) Enabled() bool {
 	return c != nil && c.customer != "" && c.key != "" && c.apiURL != ""
 }
 
+// generateSign 按快递100协议计算 param+key+customer 的大写 MD5 签名。
+// 该 MD5 仅用于供应商请求协议，不用于存储密码。
 func (c *Client) generateSign(param string) string {
 	hash := md5.Sum([]byte(param + c.key + c.customer))
 	return strings.ToUpper(fmt.Sprintf("%x", hash))
 }
 
+// QueryExpress 验证请求、计算签名并提交快递查询，返回轨迹响应。
+// 支持 context 取消；业务失败可同时返回响应和错误，输入请求会先复制而不直接修改。
 func (c *Client) QueryExpress(ctx context.Context, req *QueryRequest) (*QueryResponse, error) {
 	if !c.Enabled() {
 		return nil, fmt.Errorf("快递100客户端配置不完整")
@@ -107,6 +118,7 @@ func (c *Client) QueryExpress(ctx context.Context, req *QueryRequest) (*QueryRes
 	return &result, nil
 }
 
+// truncate 按字节限制错误响应文本长度，避免上游大响应撑大错误日志。
 func truncate(value string, max int) string {
 	if len(value) <= max {
 		return value

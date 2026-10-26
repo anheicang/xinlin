@@ -1,3 +1,5 @@
+// 文件用途：验证密文随机性、解密还原、用途绑定和篡改检测。
+
 package secretbox
 
 import (
@@ -6,6 +8,7 @@ import (
 	"testing"
 )
 
+// TestCardEncryption 验证密文随机性、解密还原、用途绑定和篡改检测。
 func TestCardEncryption(t *testing.T) {
 	key := base64.StdEncoding.EncodeToString([]byte(strings.Repeat("k", 32)))
 	a, e := Seal(key, "private-card", "delivery:1:2")

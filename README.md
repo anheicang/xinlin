@@ -7,7 +7,7 @@
 要求 Go 1.21.13 或以上版本。
 
 ```sh
-go get github.com/anheicang/xinlin@v0.1.2
+go get github.com/anheicang/xinlin@v0.1.3
 ```
 
 在业务项目中按需导入子包；`go get` 将组件作为依赖管理，源码由 Go module cache 管理，无需再复制到项目目录。如需将依赖源码随项目保存，可执行 `go mod vendor`。
@@ -96,10 +96,10 @@ GitHub Actions 自动检查格式、依赖一致性、静态分析、竞态测�
 
 全部组件包均已补齐单元测试，总语句覆盖率为 98.1%。测试范围、覆盖率明细和报告生成方式见 [TESTING.md](TESTING.md)。
 
-发布使用语义化版本标签，例如 `v0.1.2`；项目中固定版本升级，避免依赖浮动分支：
+发布使用语义化版本标签，例如 `v0.1.3`；项目中固定版本升级，避免依赖浮动分支：
 
 ```sh
-go get github.com/anheicang/xinlin@v0.1.2
+go get github.com/anheicang/xinlin@v0.1.3
 go mod tidy
 ```
 

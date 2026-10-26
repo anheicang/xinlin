@@ -1,7 +1,10 @@
+// 文件用途：验证手机号 Unicode 空白清理与非空白字符保留；验证纯数字搜索去空白，而姓名等普通文本保留内部空格。
+
 package phone
 
 import "testing"
 
+// TestNormalize 验证手机号 Unicode 空白清理与非空白字符保留。
 func TestNormalize(t *testing.T) {
 	for _, tc := range []struct{ input, want string }{
 		{"151 9009 5877", "15190095877"},
@@ -18,6 +21,7 @@ func TestNormalize(t *testing.T) {
 	}
 }
 
+// TestNormalizeSearch 验证纯数字搜索去空白，而姓名等普通文本保留内部空格。
 func TestNormalizeSearch(t *testing.T) {
 	for _, tc := range []struct{ input, want string }{
 		{"151 9009 5877", "15190095877"},

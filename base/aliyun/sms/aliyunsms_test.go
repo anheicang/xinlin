@@ -1,3 +1,5 @@
+// 文件用途：验证短信 SDK 请求初始化、HTTPS、模板参数和业务状态码；验证空消息和无法序列化的模板参数会返回错误。
+
 package sms
 
 import (
@@ -8,10 +10,13 @@ import (
 	"testing"
 )
 
+// smsTransport 将短信 SDK 的 HTTP 请求交给测试处理器。
 type smsTransport func(*http.Request) (*http.Response, error)
 
+// RoundTrip 将 HTTP 请求交给测试处理函数，不访问真实供应商接口。
 func (f smsTransport) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
 
+// TestSendMessageInitializesSDKAndChecksBusinessCode 验证短信 SDK 请求初始化、HTTPS、模板参数和业务状态码。
 func TestSendMessageInitializesSDKAndChecksBusinessCode(t *testing.T) {
 	for _, code := range []string{"OK", "isv.BUSINESS_LIMIT_CONTROL"} {
 		t.Run(code, func(t *testing.T) {
@@ -50,6 +55,7 @@ func TestSendMessageInitializesSDKAndChecksBusinessCode(t *testing.T) {
 	}
 }
 
+// TestInvalidSMSMessageContent 验证空消息和无法序列化的模板参数会返回错误。
 func TestInvalidSMSMessageContent(t *testing.T) {
 	c, err := NewSmsClient(AliyunSmsConfig{RegionId: "cn-hangzhou", AccessKey: "test", AccessSecret: "test"})
 	if err != nil {

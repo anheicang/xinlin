@@ -1,3 +1,5 @@
+// 文件用途：验证访问日志不泄露请求、响应、panic 或认证信息，也不改变处理结果；验证访问日志包装保留流式输出和首个最终响应状态。
+
 package safelog
 
 import (
@@ -17,6 +19,7 @@ import (
 	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
+// capture 临时捕获 logx 输出，测试结束后恢复原日志 Writer。
 func capture(t *testing.T) *bytes.Buffer {
 	t.Helper()
 	previous := logx.Reset()
@@ -26,6 +29,7 @@ func capture(t *testing.T) *bytes.Buffer {
 	return buffer
 }
 
+// TestAccessKeepsAuthenticationAndLogsOnlySafeMetadata 验证访问日志不泄露请求、响应、panic 或认证信息，也不改变处理结果。
 func TestAccessKeepsAuthenticationAndLogsOnlySafeMetadata(t *testing.T) {
 	for _, scenario := range []string{"normal", "unauthorized", "server-error", "slow", "panic"} {
 		t.Run(scenario, func(t *testing.T) {
@@ -83,6 +87,7 @@ func TestAccessKeepsAuthenticationAndLogsOnlySafeMetadata(t *testing.T) {
 	}
 }
 
+// TestAccessSupportsStreamingAndFirstFinalStatus 验证访问日志包装保留流式输出和首个最终响应状态。
 func TestAccessSupportsStreamingAndFirstFinalStatus(t *testing.T) {
 	output := capture(t)
 	response := httptest.NewRecorder()
@@ -100,6 +105,7 @@ func TestAccessSupportsStreamingAndFirstFinalStatus(t *testing.T) {
 	}
 }
 
+// TestSafeRouterPreservesCORSPreflight 验证路由包装不会破坏跨域 OPTIONS 预检。
 func TestSafeRouterPreservesCORSPreflight(t *testing.T) {
 	var c rest.RestConf
 	if err := conf.LoadFromJsonBytes([]byte(`{"Name":"safe-log-cors-test","Host":"127.0.0.1","Port":0,"Log":{"Mode":"console"}}`), &c); err != nil {

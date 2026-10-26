@@ -1,3 +1,5 @@
+// 文件用途：按会话名缓存 STS 临时凭证，提前刷新并抑制重复并发请求。
+
 package oss
 
 import (
@@ -12,7 +14,7 @@ import (
 
 // ================== STS 服务模块（符合需求文档 5.1） ==================
 
-// STSCredentials STS 临时凭证
+// STSCredentials 保存临时访问密钥、SecurityToken 和过期时间，禁止写入普通日志。
 type STSCredentials struct {
 	AccessKeyId     string    // 临时 AccessKeyId
 	AccessKeySecret string    // 临时 AccessKeySecret
@@ -20,26 +22,26 @@ type STSCredentials struct {
 	Expiration      time.Time // 过期时间
 }
 
-// IsExpired 检查凭证是否过期（提前5分钟刷新）
+// IsExpired 判断 STS 凭证是否已进入过期前 5 分钟的刷新窗口。
 func (c *STSCredentials) IsExpired() bool {
 	return time.Now().Add(5 * time.Minute).After(c.Expiration)
 }
 
-// IsValid 检查凭证是否有效
+// IsValid 判断 STS 凭证关键字段是否完整，且未进入提前刷新窗口。
 func (c *STSCredentials) IsValid() bool {
 	return c.AccessKeyId != "" && c.AccessKeySecret != "" && c.SecurityToken != "" && !c.IsExpired()
 }
 
-// STSService STS 服务（支持凭证缓存和自动刷新）
+// STSService 按会话名缓存 STS 凭证，并通过读写锁协调并发刷新。
 type STSService struct {
-	config AliyunOssConfig
-	mu     sync.RWMutex
+	config AliyunOssConfig // 当前服务使用的配置副本。
+	mu     sync.RWMutex    // 保护凭证缓存的并发读写锁。
 
 	// 凭证缓存（按 sessionName 缓存）
 	credentialsCache map[string]*STSCredentials
 }
 
-// NewSTSService 创建 STS 服务实例
+// NewSTSService 创建按 sessionName 缓存临时凭证的服务，不立即调用云端。
 func NewSTSService(config AliyunOssConfig) *STSService {
 	return &STSService{
 		config:           config,
@@ -47,7 +49,8 @@ func NewSTSService(config AliyunOssConfig) *STSService {
 	}
 }
 
-// GetCredentials 获取 STS 临时凭证（支持缓存和自动刷新）
+// GetCredentials 复用有效缓存，缺失或即将过期时同步申请新凭证。
+// 服务可被多个 goroutine 复用；调用方应将返回凭证视为只读。
 func (s *STSService) GetCredentials(sessionName string) (*STSCredentials, error) {
 	// 先尝试从缓存获取
 	s.mu.RLock()
@@ -62,7 +65,8 @@ func (s *STSService) GetCredentials(sessionName string) (*STSCredentials, error)
 	return s.refreshCredentials(sessionName)
 }
 
-// refreshCredentials 刷新凭证
+// refreshCredentials 在写锁内再次检查缓存并刷新，避免并发请求重复调用 STS。
+// 锁覆盖云端调用，因此同一服务实例的凭证刷新会串行执行。
 func (s *STSService) refreshCredentials(sessionName string) (*STSCredentials, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -84,7 +88,8 @@ func (s *STSService) refreshCredentials(sessionName string) (*STSCredentials, er
 	return credentials, nil
 }
 
-// assumeRole 调用阿里云 STS AssumeRole 接口
+// assumeRole 构造 AssumeRole 请求并申请 3600 秒临时凭证。
+// 读取供应商过期时间；若该时间无法解析，沿用历史行为以当前时间加一小时作为回退值。
 func (s *STSService) assumeRole(sessionName string) (*STSCredentials, error) {
 	stsEndpoint := s.config.StsEndpoint
 	if stsEndpoint == "" {
@@ -133,14 +138,14 @@ func (s *STSService) assumeRole(sessionName string) (*STSCredentials, error) {
 	}, nil
 }
 
-// ClearCache 清除所有缓存
+// ClearCache 清空此 STS 服务的所有缓存，下次获取时重新请求凭证。
 func (s *STSService) ClearCache() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.credentialsCache = make(map[string]*STSCredentials)
 }
 
-// ClearCacheBySession 清除指定会话的缓存
+// ClearCacheBySession 仅清除指定会话名的 STS 缓存，不影响其他会话。
 func (s *STSService) ClearCacheBySession(sessionName string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

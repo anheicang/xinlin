@@ -1,3 +1,5 @@
+// 文件用途：验证多层 %w 包装后的业务码仍可识别和提取。
+
 package baseerror
 
 import (
@@ -6,6 +8,7 @@ import (
 	"testing"
 )
 
+// TestBusinessErrorsSurviveWrapping 验证多层 %w 包装后的业务码仍可识别和提取。
 func TestBusinessErrorsSurviveWrapping(t *testing.T) {
 	for _, original := range []error{NewCodeError(42, "business"), NewHttpCodeError(403, 42, "business")} {
 		wrapped := fmt.Errorf("outer: %w", fmt.Errorf("inner: %w", original))

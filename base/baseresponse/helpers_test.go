@@ -1,3 +1,5 @@
+// 文件用途：验证各类 HTTP 辅助响应、旧入口及 ETag 计算。
+
 package baseresponse
 
 import (
@@ -9,6 +11,7 @@ import (
 	"github.com/anheicang/xinlin/base/baseerror"
 )
 
+// TestResponseHelpersAndLegacyContract 验证各类 HTTP 辅助响应、旧入口及 ETag 计算。
 func TestResponseHelpersAndLegacyContract(t *testing.T) {
 	r := httptest.NewRequest("GET", "/", nil)
 	for _, tt := range []struct {

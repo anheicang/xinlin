@@ -1,3 +1,5 @@
+// 文件用途：验证可运行示例的金额转换和手机号清理输出。
+
 package main
 
 import (
@@ -7,6 +9,7 @@ import (
 	"testing"
 )
 
+// TestBasicExample 验证可运行示例的金额转换和手机号清理输出。
 func TestBasicExample(t *testing.T) {
 	reader, writer, err := os.Pipe()
 	if err != nil {

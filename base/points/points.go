@@ -1,6 +1,5 @@
-// Package points converts human-readable points (1 point = 1 yuan) to integer
-// fen. Requests, database values and business arithmetic use fen; product
-// response prices are converted back to decimal points at the output boundary.
+// 文件用途：完成金额/积分的整数分转换、格式化和比例计算。
+
 package points
 
 import (
@@ -11,19 +10,20 @@ import (
 	"strings"
 )
 
+// Scale 表示一个显示单位对应的整数分数，即 1 元/积分 = 100 分。
 const Scale int64 = 100
 
-// MaxFen is exact in a JavaScript JSON number as well as a Go int64.
+// MaxFen 是允许解析的最大整数分，取 JavaScript Number 可精确表示的最大整数。
 const MaxFen int64 = 9007199254740991
 
-// Display converts integer fen to the decimal points used by product responses.
-// Keep business arithmetic and request values in integer fen.
+// Display 把整数分转换成显示用的小数单位。
+// 只用于输出边界，后续金额运算仍应使用整数分。
 func Display(fen int64) float64 {
 	return float64(fen) / float64(Scale)
 }
 
-// Parse accepts ordinary nonnegative decimal text, rejecting extra precision
-// instead of silently rounding a price from an Excel cell.
+// Parse 把非负、最多两位小数的文本转换成整数分。
+// 拒绝科学计数法、负数、额外精度和超过 MaxFen 的值，不进行四舍五入。
 func Parse(value string) (int64, error) {
 	value = strings.TrimSpace(value)
 	parts := strings.Split(value, ".")
@@ -49,6 +49,7 @@ func Parse(value string) (int64, error) {
 	return amount, nil
 }
 
+// Format 把整数分格式化为固定两位小数文本，支持负值展示。
 func Format(fen int64) string {
 	if fen < 0 {
 		return fmt.Sprintf("-%d.%02d", -(fen / Scale), -(fen % Scale))
@@ -56,8 +57,8 @@ func Format(fen int64) string {
 	return fmt.Sprintf("%d.%02d", fen/Scale, fen%Scale)
 }
 
-// Proportion floors to a whole fen without overflowing the intermediate
-// product. Use cumulative targets to conserve every fen across partial refunds.
+// Proportion 计算 fen*numerator/denominator，避免中间乘法溢出。
+// 结果向零截断；非负业务值等同于向下取整，分母非正数返回 0，调用方需保证最终结果可用 int64 表示。
 func Proportion(fen, numerator, denominator int64) int64 {
 	if denominator <= 0 {
 		return 0

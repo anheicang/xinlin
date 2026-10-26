@@ -1,3 +1,5 @@
+// 文件用途：显式启用时运行真实阿里云 STS 集成校验；默认跳过，不属于离线单元测试。
+
 package oss
 
 import (
@@ -7,6 +9,7 @@ import (
 	"github.com/zeromicro/go-zero/core/conf"
 )
 
+// TestGetOssSts 显式启用时运行真实阿里云 STS 集成校验；默认跳过，不属于离线单元测试。
 func TestGetOssSts(t *testing.T) {
 	if os.Getenv("XINLIN_OSS_STS_INTEGRATION") != "1" {
 		t.Skip("设置 XINLIN_OSS_STS_INTEGRATION=1 后调用真实阿里云STS")

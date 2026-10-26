@@ -1,3 +1,5 @@
+// 文件用途：回归验证值为 false 的权限不会进入有效权限列表；回归验证 JWT 用户 ID 精度、签发时间、有效期和签名拒绝。
+
 package authentication
 
 import (
@@ -15,6 +17,7 @@ import (
 	"github.com/zeromicro/go-zero/core/stores/redis"
 )
 
+// testRedis 启动独立内存 Redis 并注册测试清理，隔离会话/版本测试数据。
 func testRedis(t *testing.T) (*miniredis.Miniredis, *redis.Redis) {
 	t.Helper()
 	s := miniredis.RunT(t)
@@ -25,6 +28,7 @@ func testRedis(t *testing.T) (*miniredis.Miniredis, *redis.Redis) {
 	return s, r
 }
 
+// TestDisabledPermissionsAreExcluded 回归验证值为 false 的权限不会进入有效权限列表。
 func TestDisabledPermissionsAreExcluded(t *testing.T) {
 	ctx := WithAuthContext(context.Background(), AuthContext{UID: 1, Perms: map[string]bool{"read": true, "delete": false}})
 	if !HasPerm(CtxPerms(ctx), "read") || HasPerm(CtxPerms(ctx), "delete") {
@@ -32,6 +36,7 @@ func TestDisabledPermissionsAreExcluded(t *testing.T) {
 	}
 }
 
+// TestJWTIdentityAndIssuedAt 回归验证 JWT 用户 ID 精度、签发时间、有效期和签名拒绝。
 func TestJWTIdentityAndIssuedAt(t *testing.T) {
 	const secret = "test-secret"
 	for _, id := range []int64{1, 9007199254740993, 9223372036854775807} {
@@ -83,6 +88,7 @@ func TestJWTIdentityAndIssuedAt(t *testing.T) {
 	}
 }
 
+// TestSessionIndexCoversLongestSession 回归验证短会话不会缩短长会话索引，批量撤销可以找到长会话。
 func TestSessionIndexCoversLongestSession(t *testing.T) {
 	for _, lifetimes := range [][]int64{{3600, 10}, {10, 3600}} {
 		s, r := testRedis(t)
@@ -104,6 +110,7 @@ func TestSessionIndexCoversLongestSession(t *testing.T) {
 	}
 }
 
+// TestSessionOperationsPropagateRedisErrors 回归验证会话读写/撤销不会吞掉 Redis 故障。
 func TestSessionOperationsPropagateRedisErrors(t *testing.T) {
 	s, r := testRedis(t)
 	ctx := context.Background()
@@ -129,6 +136,7 @@ func TestSessionOperationsPropagateRedisErrors(t *testing.T) {
 	}
 }
 
+// TestRevocationStartsAboveDefaultAndIsAtomic 回归验证首次撤销版本高于 1，且并发递增不重复。
 func TestRevocationStartsAboveDefaultAndIsAtomic(t *testing.T) {
 	_, r := testRedis(t)
 	const workers = 12
@@ -164,6 +172,7 @@ func TestRevocationStartsAboveDefaultAndIsAtomic(t *testing.T) {
 	}
 }
 
+// TestSessionDeletionFailuresKeepRetryIndex 验证删除或索引更新失败时保留可重试索引，恢复后可完成撤销。
 func TestSessionDeletionFailuresKeepRetryIndex(t *testing.T) {
 	for _, command := range []string{"DEL", "SREM"} {
 		t.Run(command, func(t *testing.T) {
@@ -196,6 +205,7 @@ func TestSessionDeletionFailuresKeepRetryIndex(t *testing.T) {
 	}
 }
 
+// TestSessionIndexFailureRollsBackNewSession 验证索引写入失败时回滚新会话，避免遗留无法批量撤销的登录。
 func TestSessionIndexFailureRollsBackNewSession(t *testing.T) {
 	s, r := testRedis(t)
 	s.Server().SetPreHook(func(peer *server.Peer, cmd string, args ...string) bool {

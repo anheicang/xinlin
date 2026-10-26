@@ -1,3 +1,5 @@
+// 文件用途：验证快递查询参数、URL、网络、HTTP、响应读取和业务失败；验证物流状态、签收标记、无效时间及最早/最晚轨迹提取。
+
 package kd100
 
 import (
@@ -9,15 +11,22 @@ import (
 	"testing"
 )
 
+// transportFunc 用于离线快递查询的 HTTP 传输函数适配器。
 type transportFunc func(*http.Request) (*http.Response, error)
 
+// RoundTrip 将 HTTP 请求交给测试处理函数，不访问真实供应商接口。
 func (f transportFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
 
+// badBody 模拟响应正文读取失败，供错误传播测试使用。
 type badBody struct{}
 
+// Read 主动模拟读取失败，用于验证上层错误传播。
 func (badBody) Read([]byte) (int, error) { return 0, errors.New("body unreadable") }
-func (badBody) Close() error             { return nil }
 
+// Close 完成测试替身的无副作用资源关闭。
+func (badBody) Close() error { return nil }
+
+// TestQueryValidationAndUpstreamFailures 验证快递查询参数、URL、网络、HTTP、响应读取和业务失败。
 func TestQueryValidationAndUpstreamFailures(t *testing.T) {
 	request := NewQueryRequest("ems", "123456", "")
 	var disabled *Client
@@ -75,6 +84,7 @@ func TestQueryValidationAndUpstreamFailures(t *testing.T) {
 	}
 }
 
+// TestTrackingStatesAndTimes 验证物流状态、签收标记、无效时间及最早/最晚轨迹提取。
 func TestTrackingStatesAndTimes(t *testing.T) {
 	var empty *QueryResponse
 	if empty.APIStatus() != "" || empty.IsSuccess() || empty.IsSigned() {

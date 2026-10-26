@@ -1,3 +1,5 @@
+// 文件用途：验证 STS 缓存命中、并发刷新去重及缓存清理；验证 STS 失败、空响应、日期回退和兼容接口请求参数。
+
 package oss
 
 import (
@@ -20,22 +22,28 @@ import (
 	ossSDK "github.com/aliyun/aliyun-oss-go-sdk/oss"
 )
 
+// assumeFunc 将普通函数适配为 STS AssumeRole 接口。
 type assumeFunc func(*sts.AssumeRoleRequest) (*sts.AssumeRoleResponse, error)
 
+// AssumeRole 把 STS 请求交给注入的测试函数，避免真实云端调用。
 func (f assumeFunc) AssumeRole(req *sts.AssumeRoleRequest) (*sts.AssumeRoleResponse, error) {
 	return f(req)
 }
 
+// objectTransport 将普通函数适配为 OSS SDK 的 HTTP 传输层。
 type objectTransport func(*http.Request) (*http.Response, error)
 
+// RoundTrip 将 HTTP 请求交给测试处理函数，不访问真实供应商接口。
 func (f objectTransport) RoundTrip(req *http.Request) (*http.Response, error) { return f(req) }
 
+// stsResponse 构造字段完整的 STS 响应样本，过期时间由测试指定。
 func stsResponse(expiration string) *sts.AssumeRoleResponse {
 	return &sts.AssumeRoleResponse{Body: &sts.AssumeRoleResponseBody{Credentials: &sts.AssumeRoleResponseBodyCredentials{
 		AccessKeyId: tea.String("temporary-id"), AccessKeySecret: tea.String("temporary-secret"), SecurityToken: tea.String("temporary-token"), Expiration: tea.String(expiration),
 	}}}
 }
 
+// mockSTS 替换 STS 客户端工厂并校验 endpoint，测试结束后恢复。
 func mockSTS(t *testing.T, f assumeFunc) {
 	t.Helper()
 	previous := newSTSClient
@@ -48,6 +56,7 @@ func mockSTS(t *testing.T, f assumeFunc) {
 	t.Cleanup(func() { newSTSClient = previous })
 }
 
+// TestSTSRefreshCacheAndConcurrentAccess 验证 STS 缓存命中、并发刷新去重及缓存清理。
 func TestSTSRefreshCacheAndConcurrentAccess(t *testing.T) {
 	var calls int32
 	mockSTS(t, func(req *sts.AssumeRoleRequest) (*sts.AssumeRoleResponse, error) {
@@ -91,6 +100,7 @@ func TestSTSRefreshCacheAndConcurrentAccess(t *testing.T) {
 	}
 }
 
+// TestSTSErrorsAndLegacyAPI 验证 STS 失败、空响应、日期回退和兼容接口请求参数。
 func TestSTSErrorsAndLegacyAPI(t *testing.T) {
 	config := AliyunOssConfig{StsEndpoint: "cn-hangzhou.aliyuncs.com", RoleArn: "test-role"}
 	for _, tt := range []struct {
@@ -132,6 +142,7 @@ func TestSTSErrorsAndLegacyAPI(t *testing.T) {
 	newSTSClient = previous
 }
 
+// objectFixture 创建带离线传输层及预置凭证的 OSS 上传器和兼容客户端。
 func objectFixture(t *testing.T, handle objectTransport) (*Uploader, *AliyunOssClient) {
 	t.Helper()
 	previous := newOSSClient
@@ -153,10 +164,12 @@ func objectFixture(t *testing.T, handle objectTransport) (*Uploader, *AliyunOssC
 	return u, client
 }
 
+// objectResponse 构造符合 OSS SDK 解析要求的 HTTP 响应样本。
 func objectResponse(status int, body string) *http.Response {
 	return &http.Response{StatusCode: status, Status: http.StatusText(status), Header: http.Header{"X-Oss-Request-Id": []string{"fixture-request"}}, Body: io.NopCloser(strings.NewReader(body)), ContentLength: int64(len(body))}
 }
 
+// TestUploaderAndObjectOperations 使用离线 SDK 传输层验证上传、下载、元信息、签名链接与路径工具。
 func TestUploaderAndObjectOperations(t *testing.T) {
 	var puts, deletes int
 	u, legacy := objectFixture(t, func(r *http.Request) (*http.Response, error) {
@@ -271,6 +284,7 @@ func TestUploaderAndObjectOperations(t *testing.T) {
 	}
 }
 
+// TestObjectFailuresAndInvalidConfiguration 验证 OSS 访问拒绝、非法 Bucket、缺失配置和本地文件读取失败。
 func TestObjectFailuresAndInvalidConfiguration(t *testing.T) {
 	u, legacy := objectFixture(t, func(*http.Request) (*http.Response, error) {
 		return objectResponse(403, `<Error><Code>AccessDenied</Code><Message>denied</Message></Error>`), nil
@@ -354,6 +368,7 @@ func TestObjectFailuresAndInvalidConfiguration(t *testing.T) {
 	newOSSClient = previous
 }
 
+// TestSTSClientAndEndpointNormalization 验证 endpoint 规范化和 STS 版兼容客户端初始化。
 func TestSTSClientAndEndpointNormalization(t *testing.T) {
 	for _, input := range []string{" https://oss.example.com/ ", "http://oss.example.com/", "oss.example.com"} {
 		if (AliyunOssConfig{OssEndpoint: input}).GetOssEndpoint() != "oss.example.com" {
@@ -372,6 +387,7 @@ func TestSTSClientAndEndpointNormalization(t *testing.T) {
 	}
 }
 
+// TestCreateMissingBucket 验证 Bucket 不存在时的创建流程及创建失败的错误返回。
 func TestCreateMissingBucket(t *testing.T) {
 	for _, denied := range []bool{false, true} {
 		t.Run(fmt.Sprint(denied), func(t *testing.T) {
@@ -391,6 +407,7 @@ func TestCreateMissingBucket(t *testing.T) {
 	}
 }
 
+// TestAdditionalObjectErrorBranches 验证非法对象元信息、Bucket 名称和兼容 STS 请求失败。
 func TestAdditionalObjectErrorBranches(t *testing.T) {
 	u, legacy := objectFixture(t, func(*http.Request) (*http.Response, error) {
 		response := objectResponse(200, "")

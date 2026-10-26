@@ -1,3 +1,5 @@
+// 文件用途：验证最大金额、非法格式、最小 int64 展示及无效分母。
+
 package points
 
 import (
@@ -5,6 +7,7 @@ import (
 	"testing"
 )
 
+// TestAmountBoundaries 验证最大金额、非法格式、最小 int64 展示及无效分母。
 func TestAmountBoundaries(t *testing.T) {
 	for _, input := range []string{".", ".1", "1.", "1.2.3", "999999999999999999999999", "+1", "1 2"} {
 		if _, err := Parse(input); err == nil {

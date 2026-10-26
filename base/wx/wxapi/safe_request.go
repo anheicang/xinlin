@@ -1,3 +1,5 @@
+// 文件用途：集中设置请求超时，并避免微信 URL 中的凭证被带入错误日志。
+
 package wxapi
 
 import (
@@ -12,14 +14,13 @@ import (
 	"github.com/go-resty/resty/v2"
 )
 
-// Keep client construction in one place so requests have a bounded lifetime
-// and tests can supply an isolated transport without contacting WeChat.
+// newWXClient 为微信请求统一设置 30 秒超时；测试可替换工厂以隔离真实网络。
 var newWXClient = func() *resty.Client {
 	return resty.New().SetTimeout(30 * time.Second)
 }
 
-// Resty/net/http errors can contain the complete URL and its secret/token query.
-// Do not wrap the original error: even downstream formatting must stay safe.
+// wxRequest 执行微信 HTTP 请求，并将网络错误转换为仅含方法、路径和错误类别的提示。
+// 不包装原始错误，避免下游日志展开 URL 中的 secret、token 或 code。
 func wxRequest(request *resty.Request, method, requestURL string) (*resty.Response, error) {
 	response, err := request.Execute(method, requestURL)
 	if err == nil {
@@ -39,10 +40,11 @@ func wxRequest(request *resty.Request, method, requestURL string) (*resty.Respon
 	return nil, fmt.Errorf("微信接口调用失败 method=%s path=%s kind=%s", method, path, kind)
 }
 
+// wxResponseError 保留微信业务错误码，使用固定描述替换可能包含敏感输入的上游 errmsg。
 func wxResponseError(code int64) error {
-	// Remote errmsg may echo credentials or submitted values. Preserve the code
-	// used by callers while keeping the human-readable error independent of it.
+	// 微信 errmsg 可能回显凭证或输入值，保留可供调用方判断的错误码，并重建描述。
 	return baseerror.NewCodeError(code, fmt.Sprintf("微信接口返回错误（code=%d），请稍后重试", code))
 }
 
+// wxDecodeError 返回统一的微信响应格式错误，避免对外展示原始响应内容。
 func wxDecodeError() error { return errors.New("微信接口响应格式错误") }

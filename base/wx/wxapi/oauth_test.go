@@ -1,3 +1,5 @@
+// 文件用途：验证旧全局缓存存在时，不同授权码仍独立换取对应用户身份；验证 OAuth 拒绝业务失败、格式错误和缺失 OpenID 的响应。
+
 package wxapi
 
 import (
@@ -13,6 +15,7 @@ import (
 	"github.com/zeromicro/go-zero/core/stores/redis"
 )
 
+// mockWX 根据请求生成离线微信响应，测试后恢复默认工厂。
 func mockWX(t *testing.T, handler func(*http.Request) string) {
 	t.Helper()
 	previous := newWXClient
@@ -24,6 +27,7 @@ func mockWX(t *testing.T, handler func(*http.Request) string) {
 	t.Cleanup(func() { newWXClient = previous })
 }
 
+// TestOAuthUsesEachAuthorizationCodeDespiteOldCache 验证旧全局缓存存在时，不同授权码仍独立换取对应用户身份。
 func TestOAuthUsesEachAuthorizationCodeDespiteOldCache(t *testing.T) {
 	s := miniredis.RunT(t)
 	s.Set("open_platform_web_access_token", "old-user-token")
@@ -56,6 +60,7 @@ func TestOAuthUsesEachAuthorizationCodeDespiteOldCache(t *testing.T) {
 	}
 }
 
+// TestOAuthRejectsBusinessErrorsAndMissingIdentity 验证 OAuth 拒绝业务失败、格式错误和缺失 OpenID 的响应。
 func TestOAuthRejectsBusinessErrorsAndMissingIdentity(t *testing.T) {
 	for _, body := range []string{`{"errcode":40001,"errmsg":"PRIVATE"}`, `{}`, `broken-json`} {
 		t.Run(body, func(t *testing.T) {
@@ -68,6 +73,7 @@ func TestOAuthRejectsBusinessErrorsAndMissingIdentity(t *testing.T) {
 	}
 }
 
+// TestOfficialAccountChecksBusinessErrorCodes 验证公众号接口识别微信业务错误，不将 HTTP 200 一律视为成功。
 func TestOfficialAccountChecksBusinessErrorCodes(t *testing.T) {
 	for _, body := range []string{`{"errcode":40001,"errmsg":"PRIVATE"}`, `{"openid":"user","count":1,"data":{"openid":["user"]}}`} {
 		t.Run(body, func(t *testing.T) {
