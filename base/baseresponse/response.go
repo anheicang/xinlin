@@ -4,10 +4,12 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
+	"net/http"
+
 	"github.com/anheicang/xinlin/base/baseerror"
 	"github.com/anheicang/xinlin/base/proto"
 	"github.com/zeromicro/go-zero/core/logx"
-	"net/http"
 )
 
 const codeServiceUnavailable = 10001
@@ -21,7 +23,8 @@ func FormatResponse(data interface{}, err error, w http.ResponseWriter) {
 	if err != nil {
 		codeErr, ok := baseerror.FromError(err)
 		if ok {
-			if httpErr, ok := err.(interface{ HttpStatus() int }); ok {
+			var httpErr interface{ HttpStatus() int }
+			if errors.As(err, &httpErr) {
 				proto.HttpError(w, httpErr.HttpStatus(), codeErr.Code(), codeErr.Desc(), codeErr.Data())
 			} else {
 				httpBizError(w, codeErr)
@@ -51,7 +54,8 @@ func FormatResponseWithRequest(data interface{}, err error, w http.ResponseWrite
 	if err != nil {
 		codeErr, ok := baseerror.FromError(err)
 		if ok {
-			if httpErr, ok := err.(interface{ HttpStatus() int }); ok {
+			var httpErr interface{ HttpStatus() int }
+			if errors.As(err, &httpErr) {
 				proto.HttpError(w, httpErr.HttpStatus(), codeErr.Code(), codeErr.Desc(), codeErr.Data())
 			} else {
 				httpBizError(w, codeErr)

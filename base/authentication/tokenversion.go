@@ -96,10 +96,16 @@ func IncrTokenVersion(ctx context.Context, redisClient *redis.Redis, clientType 
 		logx.Errorf("IncrTokenVersion buildTokenVersionKey error uid=%d shopId=%d clientType=%s err=%v", uid, shopId, clientType, err)
 		return 0, err
 	}
-	version, err := redisClient.IncrCtx(ctx, key)
+	result, err := redisClient.EvalCtx(ctx, `
+redis.call('SET', KEYS[1], ARGV[1], 'NX')
+return redis.call('INCR', KEYS[1])`, []string{key}, defaultTokenVersion)
 	if err != nil {
 		logx.Errorf("IncrTokenVersion RedisClient.IncrCtx error uid=%d shopId=%d clientType=%s err=%v", uid, shopId, clientType, err)
 		return 0, err
+	}
+	version, ok := result.(int64)
+	if !ok || version <= defaultTokenVersion {
+		return 0, errors.New("invalid token version result")
 	}
 	return version, nil
 }

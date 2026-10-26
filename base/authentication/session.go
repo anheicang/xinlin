@@ -38,7 +38,7 @@ func BuildSessionIndexKey(clientType string, uid int64) string {
 }
 
 func SaveSession(ctx context.Context, redisClient *redis.Redis, sid string, data SessionData, expireSeconds int64) error {
-	if redisClient == nil || sid == "" || data.UID <= 0 {
+	if redisClient == nil || sid == "" || data.UID <= 0 || data.ClientType == "" || expireSeconds <= 0 {
 		return errors.New("invalid session args")
 	}
 	payload, err := json.Marshal(data)
@@ -50,10 +50,21 @@ func SaveSession(ctx context.Context, redisClient *redis.Redis, sid string, data
 		return err
 	}
 	indexKey := BuildSessionIndexKey(data.ClientType, data.UID)
-	if _, err := redisClient.SaddCtx(ctx, indexKey, sid); err != nil {
-		return err
+	// Update membership and extend (never shorten) the index TTL atomically.
+	// Only one key is used by the script, preserving Redis Cluster compatibility.
+	_, err = redisClient.EvalCtx(ctx, `
+local ttl = redis.call('PTTL', KEYS[1])
+redis.call('SADD', KEYS[1], ARGV[1])
+local requested = tonumber(ARGV[2]) * 1000
+if ttl ~= -1 and ttl < requested then
+    redis.call('PEXPIRE', KEYS[1], requested)
+end
+return 1`, []string{indexKey}, sid, expireSeconds)
+	if err != nil {
+		_, cleanupErr := redisClient.DelCtx(ctx, key)
+		return errors.Join(fmt.Errorf("index session: %w", err), cleanupErr)
 	}
-	return redisClient.ExpireCtx(ctx, indexKey, int(expireSeconds))
+	return nil
 }
 
 func LoadSession(ctx context.Context, redisClient *redis.Redis, clientType, sid string) (*SessionData, error) {
@@ -62,7 +73,10 @@ func LoadSession(ctx context.Context, redisClient *redis.Redis, clientType, sid 
 	}
 	key := BuildSessionKey(clientType, sid)
 	payload, err := redisClient.GetCtx(ctx, key)
-	if err != nil || payload == "" {
+	if err != nil {
+		return nil, err
+	}
+	if payload == "" {
 		return nil, ErrSessionNotFound
 	}
 	var data SessionData
@@ -74,20 +88,24 @@ func LoadSession(ctx context.Context, redisClient *redis.Redis, clientType, sid 
 
 func RemoveSession(ctx context.Context, redisClient *redis.Redis, clientType, sid string, uid int64) error {
 	if redisClient == nil || clientType == "" || sid == "" {
-		return nil
+		return errors.New("invalid session args")
 	}
 	key := BuildSessionKey(clientType, sid)
-	_, _ = redisClient.DelCtx(ctx, key)
+	if _, err := redisClient.DelCtx(ctx, key); err != nil {
+		return err
+	}
 	if uid > 0 {
 		indexKey := BuildSessionIndexKey(clientType, uid)
-		_, _ = redisClient.SremCtx(ctx, indexKey, sid)
+		if _, err := redisClient.SremCtx(ctx, indexKey, sid); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
 func RemoveUserSessions(ctx context.Context, redisClient *redis.Redis, clientType string, uid int64) error {
 	if redisClient == nil || clientType == "" || uid <= 0 {
-		return nil
+		return errors.New("invalid session args")
 	}
 	indexKey := BuildSessionIndexKey(clientType, uid)
 	sids, err := redisClient.SmembersCtx(ctx, indexKey)
@@ -96,8 +114,13 @@ func RemoveUserSessions(ctx context.Context, redisClient *redis.Redis, clientTyp
 	}
 	for _, sid := range sids {
 		key := BuildSessionKey(clientType, sid)
-		_, _ = redisClient.DelCtx(ctx, key)
+		if _, err := redisClient.DelCtx(ctx, key); err != nil {
+			return err
+		}
+		if _, err := redisClient.SremCtx(ctx, indexKey, sid); err != nil {
+			return err
+		}
 	}
-	_, _ = redisClient.DelCtx(ctx, indexKey)
+	// Do not delete the entire index: it may contain a concurrent new login.
 	return nil
 }

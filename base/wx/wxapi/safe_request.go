@@ -4,12 +4,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/anheicang/xinlin/base/baseerror"
 	"net"
 	"net/url"
+	"time"
 
+	"github.com/anheicang/xinlin/base/baseerror"
 	"github.com/go-resty/resty/v2"
 )
+
+// Keep client construction in one place so requests have a bounded lifetime
+// and tests can supply an isolated transport without contacting WeChat.
+var newWXClient = func() *resty.Client {
+	return resty.New().SetTimeout(30 * time.Second)
+}
 
 // Resty/net/http errors can contain the complete URL and its secret/token query.
 // Do not wrap the original error: even downstream formatting must stay safe.

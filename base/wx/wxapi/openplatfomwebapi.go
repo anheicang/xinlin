@@ -2,12 +2,14 @@ package wxapi
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
-	"github.com/go-resty/resty/v2"
-	"github.com/zeromicro/go-zero/core/logx"
-	"github.com/zeromicro/go-zero/core/stores/redis"
-	"github.com/zeromicro/go-zero/core/threading"
+
 	"net/http"
+	"net/url"
+	"strings"
+
+	"github.com/zeromicro/go-zero/core/stores/redis"
 )
 
 type OpenPlatformWebHelper struct {
@@ -31,65 +33,35 @@ const AccessTokenKey = "open_platform_access_token:%s"
 // 获取访问令牌地址
 const tokenURLFormat = "https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=%s&secret=%s"
 
-func (o *OpenPlatformWebHelper) refreshAccessTokenAndGetOpenId(refreshToken string) (string, error) {
-	url := fmt.Sprintf("https://api.weixin.qq.com/sns/oauth2/refresh_token?appid=%s&grant_type=refresh_token&refresh_token=%s", o.C.AppId, refreshToken)
-	client := resty.New()
-	resp, err := wxRequest(client.R(), http.MethodGet, url)
+// GetOpenId exchanges the current authorization code for that user's identity.
+// OAuth credentials are user-specific and must never use the application token cache.
+func (o *OpenPlatformWebHelper) GetOpenId(code string) (string, error) {
+	if o == nil || o.C.AppId == "" || o.C.Secret == "" || strings.TrimSpace(code) == "" {
+		return "", errors.New("invalid OAuth configuration or code")
+	}
+	query := url.Values{
+		"appid": {o.C.AppId}, "secret": {o.C.Secret},
+		"code": {code}, "grant_type": {"authorization_code"},
+	}
+	client := newWXClient()
+	resp, err := wxRequest(client.R(), http.MethodGet, "https://api.weixin.qq.com/sns/oauth2/access_token?"+query.Encode())
 	if err != nil {
 		return "", err
 	}
-	wxResp := new(AccessTokenResponse)
-	if err = json.Unmarshal(resp.Body(), wxResp); err != nil {
+	if resp.StatusCode() != http.StatusOK {
+		return "", fmt.Errorf("unexpected HTTP status: %d", resp.StatusCode())
+	}
+	var result AccessTokenResponse
+	if err := json.Unmarshal(resp.Body(), &result); err != nil {
 		return "", wxDecodeError()
 	}
-
-	if wxResp.ErrorCode != 0 {
-		return "", wxResponseError(wxResp.ErrorCode)
+	if result.ErrorCode != 0 {
+		return "", wxResponseError(result.ErrorCode)
 	}
-
-	return wxResp.OpenId, o.RedisConn.Setex("open_platform_web_access_token", wxResp.AccessToken, 3600*24*28)
-}
-
-func (o *OpenPlatformWebHelper) GetOpenId(code string) (string, error) {
-	openId := ""
-	accessToken, err := o.RedisConn.Get("open_platform_web_access_token")
-	if err != nil {
-		return "", err
+	if result.OpenId == "" {
+		return "", wxDecodeError()
 	}
-	if accessToken == "" {
-		url := fmt.Sprintf("https://api.weixin.qq.com/sns/oauth2/access_token?appid=%s&secret=%s&code=%s&grant_type=authorization_code", o.C.AppId, o.C.Secret, code)
-
-		// 创建http get请求
-		client := resty.New()
-		resp, err := wxRequest(client.R(), http.MethodGet, url)
-		if err != nil {
-			return "", err
-		}
-		wxResp := new(AccessTokenResponse)
-		if err = json.Unmarshal(resp.Body(), wxResp); err != nil {
-			return "", wxDecodeError()
-		}
-
-		if wxResp.ErrorCode != 0 {
-			return "", wxResponseError(wxResp.ErrorCode)
-		}
-
-		threading.GoSafe(func() {
-			if _, err := o.refreshAccessTokenAndGetOpenId(wxResp.RefreshToken); err != nil {
-				logx.Errorf("refreshAccessToken error: %v", err)
-			}
-		})
-
-		openId = wxResp.OpenId
-	}
-	//else {
-	//	openId, err = o.refreshAccessTokenAndGetOpenId(accessToken)
-	//	if err != nil {
-	//		return openId, err
-	//	}
-	//}
-
-	return openId, nil
+	return result.OpenId, nil
 }
 
 // 发送订阅消息
@@ -116,7 +88,7 @@ func (w *OpenPlatformWebHelper) SendSubscribe(config Config, template Subscribe)
 		"lang":              template.Lang,
 	}
 	// 创建 http POST 请求
-	client := resty.New()
+	client := newWXClient()
 	request := client.R().
 		SetHeader("Content-Type", "application/json").
 		SetBody(payload)
@@ -141,7 +113,7 @@ func (w *OpenPlatformWebHelper) SendSubscribe(config Config, template Subscribe)
 // GetAccessToken 得到访问令牌
 func GetAccessToken(appID, secret string) (string, error) {
 	getTokenURL := fmt.Sprintf(tokenURLFormat, appID, secret)
-	client := resty.New()
+	client := newWXClient()
 	resp, err := wxRequest(client.R(), http.MethodGet, getTokenURL)
 	if err != nil {
 		return "", err
@@ -184,7 +156,7 @@ func (w *OpenPlatformWebHelper) CheckTextLegal(config Config, content, openId st
 		"openid":  openId,
 	}
 	// 创建 http POST 请求
-	client := resty.New()
+	client := newWXClient()
 	request := client.R().
 		SetHeader("Content-Type", "application/json").
 		SetBody(payload)
@@ -229,7 +201,7 @@ func (w *OpenPlatformWebHelper) CheckMediaLegal(config Config, mediaUrl, openId 
 		"openid":     openId,
 	}
 	// 创建 http POST 请求
-	client := resty.New()
+	client := newWXClient()
 	request := client.R().
 		SetHeader("Content-Type", "application/json").
 		SetBody(payload)

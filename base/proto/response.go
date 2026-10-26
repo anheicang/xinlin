@@ -16,6 +16,7 @@ type response struct {
 func HttpError(w http.ResponseWriter, httpCode int, appCode int64, desc string, message interface{}) {
 	httpx.WriteJson(w, httpCode, response{
 		Code:    appCode,
+		Data:    message,
 		Message: desc,
 		Desc:    desc,
 	})

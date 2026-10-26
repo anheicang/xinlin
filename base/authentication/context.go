@@ -98,8 +98,10 @@ func PermsToSlice(perms map[string]bool) []string {
 		return []string{}
 	}
 	out := make([]string, 0, len(perms))
-	for p := range perms {
-		out = append(out, p)
+	for p, allowed := range perms {
+		if allowed {
+			out = append(out, p)
+		}
 	}
 	return out
 }

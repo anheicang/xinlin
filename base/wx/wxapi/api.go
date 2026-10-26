@@ -3,10 +3,10 @@ package wxapi
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/go-resty/resty/v2"
+	"net/http"
+
 	"github.com/zeromicro/go-zero/core/logx"
 	"github.com/zeromicro/go-zero/core/stores/redis"
-	"net/http"
 )
 
 type WxHelper struct {
@@ -29,7 +29,7 @@ func (w *WxHelper) Login(code string, config Config) (*WxLoginResponse, error) {
 	url = fmt.Sprintf(url, config.AppId, config.Secret, code)
 
 	// 创建http get请求
-	client := resty.New()
+	client := newWXClient()
 	resp, err := wxRequest(client.R(), http.MethodGet, url)
 	if err != nil {
 		return nil, err
@@ -75,7 +75,7 @@ func (w *WxHelper) GetPhoneData(code string, config Config) (*WxResponse, error)
 	}
 	requestPhone := func(token string) (*WxResponse, error) {
 		url := fmt.Sprintf("https://api.weixin.qq.com/wxa/business/getuserphonenumber?access_token=%s", token)
-		request := resty.New().R().
+		request := newWXClient().R().
 			SetHeader("Content-Type", "application/json").
 			SetBody(map[string]interface{}{"code": code})
 		resp, requestErr := wxRequest(request, http.MethodPost, url)
@@ -120,7 +120,7 @@ const Get_Follow_List = "https://api.weixin.qq.com/cgi-bin/user/get?access_token
 func GetUserInfo(openid, token string) (*GetUserInfoResp, error) {
 	respInfo := new(GetUserInfoResp)
 	getTokenURL := fmt.Sprintf(Get_User_Info, token, openid)
-	client := resty.New()
+	client := newWXClient()
 	resp, err := wxRequest(client.R(), http.MethodGet, getTokenURL)
 	if err != nil {
 		return respInfo, err
@@ -131,6 +131,9 @@ func GetUserInfo(openid, token string) (*GetUserInfoResp, error) {
 	err = json.Unmarshal(resp.Body(), &respInfo)
 	if err != nil {
 		return respInfo, wxDecodeError()
+	}
+	if respInfo.ErrorCode != 0 {
+		return nil, wxResponseError(respInfo.ErrorCode)
 	}
 	return respInfo, nil
 }
@@ -139,7 +142,7 @@ func GetUserInfo(openid, token string) (*GetUserInfoResp, error) {
 func GetFollowUserList(token string) (*GetFollowUserListResp, error) {
 	respInfo := new(GetFollowUserListResp)
 	getTokenURL := fmt.Sprintf(Get_Follow_List, token, "")
-	client := resty.New()
+	client := newWXClient()
 	resp, err := wxRequest(client.R(), http.MethodGet, getTokenURL)
 	if err != nil {
 		return respInfo, err
@@ -150,6 +153,9 @@ func GetFollowUserList(token string) (*GetFollowUserListResp, error) {
 	err = json.Unmarshal(resp.Body(), &respInfo)
 	if err != nil {
 		return respInfo, wxDecodeError()
+	}
+	if respInfo.ErrorCode != 0 {
+		return nil, wxResponseError(respInfo.ErrorCode)
 	}
 	return respInfo, nil
 }

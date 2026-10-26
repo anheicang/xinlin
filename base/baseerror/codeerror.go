@@ -1,5 +1,7 @@
 package baseerror
 
+import "errors"
+
 type CodeError struct {
 	code int64
 	desc string
@@ -54,26 +56,37 @@ func NewHttpCodeError(httpStatus int, code int64, desc string) *HttpCodeError {
 }
 
 func IsCodeError(err error) bool {
-	switch err.(type) {
-	case *CodeError:
-		return true
-	}
-	return false
+	_, ok := FromError(err)
+	return ok
 }
 
 func FromError(err error) (codeErr *CodeError, ok bool) {
-	if se, ok := err.(*CodeError); ok {
-		return se, true
+	// Both error types expose the same business error interface, including
+	// through wrappers; errors.As selects the outermost matching error.
+	var business interface {
+		error
+		Code() int64
+		Desc() string
+		Data() interface{}
 	}
-	if he, ok := err.(*HttpCodeError); ok {
-		return he.CodeError, true
+	if errors.As(err, &business) {
+		switch value := business.(type) {
+		case *CodeError:
+			return value, value != nil
+		case *HttpCodeError:
+			if value == nil {
+				return nil, false
+			}
+			return value.CodeError, value.CodeError != nil
+		}
+		return NewError(business.Code(), business.Desc(), business.Data()), true
 	}
 	return nil, false
 }
 
 func ToCodeError(err error) *CodeError {
-	if IsCodeError(err) {
-		return err.(*CodeError)
+	if codeErr, ok := FromError(err); ok {
+		return codeErr
 	}
 	return ErrDefault
 }

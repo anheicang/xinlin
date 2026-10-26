@@ -7,7 +7,7 @@
 要求 Go 1.21.13 或以上版本。
 
 ```sh
-go get github.com/anheicang/xinlin@v0.1.0
+go get github.com/anheicang/xinlin@v0.1.1
 ```
 
 在业务项目中按需导入子包；`go get` 将组件作为依赖管理，源码由 Go module cache 管理，无需再复制到项目目录。如需将依赖源码随项目保存，可执行 `go mod vendor`。
@@ -54,7 +54,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 }
 ```
 
-成功返回 HTTP 200、`{"code":0,"data":...}`；普通业务错误返回 HTTP 406；`NewHttpCodeError` 可指定 HTTP 状态；未知异常返回 HTTP 500 及通用提示。响应协议沿用蓝本，接入时保持前端约定一致。
+成功返回 HTTP 200、`{"code":0,"data":...}`；普通业务错误返回 HTTP 406；`NewHttpCodeError` 可指定 HTTP 状态；未知异常返回 HTTP 500 及通用提示。业务错误的附加信息通过 data 返回，message 保持描述字符串；支持使用 %w 包装的业务错误及其 HTTP 状态。响应协议沿用蓝本，接入时保持前端约定一致。
 
 仓库中的可运行示例：
 
@@ -74,8 +74,8 @@ go run ./examples/basic
 
 ## 接入约定
 
-- 鉴权保留原项目的 `admin/shop/app` 客户端、商户/用户数据范围和 Redis key 约定；接入方需确认符合自己的权限模型。会话与 token 版本 key 没有项目级前缀，不同项目应使用独立 Redis 实例或独立 DB；微信 OAuth 缓存同样需要隔离。
-- JWT 的 `GetJwtToken*` 沿用历史参数名 `iat`，调用时传入有效期秒数，如 `3600`；JWT claims 的历史格式也保留。库不自动安装鉴权中间件，由业务项目负责校验并注入 `AuthContext`。
+- 鉴权保留原项目的 `admin/shop/app` 客户端、商户/用户数据范围和 Redis key 约定；接入方需确认符合自己的权限模型。会话与 token 版本 key 没有项目级前缀，不同项目应使用独立 Redis 实例或独立 DB。微信网页登录每次通过当前授权码换取身份，不缓存用户 OAuth 凭证。
+- JWT 的 `GetJwtToken*` 沿用历史参数名 `iat`，调用时传入有效期秒数，如 `3600`；从 v0.1.1 起，签发的 iat 为当前 Unix 时间，exp 为当前时间加有效期；ParseToken 返回的数字 claim 类型为 json.Number，直接读取 claims 的项目需使用 Int64()，不要断言 float64。库不自动安装鉴权中间件，由业务项目负责校验并注入 `AuthContext`。
 - `phone.Normalize` 清理空白，不负责手机号有效性校验，也不删除 `+` 或 `-`。
 - `points` 保留两位小数、非负解析和最大安全整数限制；业务计算使用整数分。
 - `secretbox` 的 key 是 32 字节密钥的 Base64 编码；解密必须传入加密时相同的 purpose。密钥由调用方注入并保管。
@@ -94,10 +94,10 @@ go build ./...
 
 GitHub Actions 自动检查格式、依赖一致性、静态分析、竞态测试及编译。普通测试使用本地 HTTP 服务或模拟数据，不需要真实云服务凭证。真实 STS 测试默认跳过，只有设置 `XINLIN_OSS_STS_INTEGRATION=1` 和 `XINLIN_OSS_CONFIG_FILE`（包含 `Oss` 节点的本地 YAML 路径）才会调用阿里云。
 
-发布使用语义化版本标签，例如 `v0.1.0`；项目中固定版本升级，避免依赖浮动分支：
+发布使用语义化版本标签，例如 `v0.1.1`；项目中固定版本升级，避免依赖浮动分支：
 
 ```sh
-go get github.com/anheicang/xinlin@v0.1.0
+go get github.com/anheicang/xinlin@v0.1.1
 go mod tidy
 ```
 

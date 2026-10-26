@@ -74,7 +74,7 @@ func GetJwtTokenWithSession(secretKey string, iat, userId int64, clientType, sid
 	seconds := time.Now().Unix()
 	claims := make(jwt.MapClaims)
 	claims["exp"] = iat + seconds
-	claims["iat"] = iat
+	claims["iat"] = seconds
 	claims["uid"] = userId
 	if clientType != "" {
 		claims["client_type"] = clientType
@@ -92,7 +92,7 @@ func GetJwtTokenWithPerms(secretKey string, iat, userId int64, perms []string) (
 	seconds := time.Now().Unix()
 	claims := make(jwt.MapClaims)
 	claims["exp"] = iat + seconds
-	claims["iat"] = iat
+	claims["iat"] = seconds
 	claims["uid"] = userId
 	claims["perms"] = perms
 	token := jwt.New(jwt.SigningMethodHS256)
@@ -105,7 +105,7 @@ func ParseToken(tokenString, secretKey string) (jwt.MapClaims, error) {
 	key := []byte(secretKey)
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
 		return key, nil
-	})
+	}, jwt.WithJSONNumber())
 
 	if err != nil {
 		return nil, err

@@ -51,6 +51,7 @@ type Result struct {
 	Label   int64  `json:"label"`
 }
 type GetUserInfoResp struct {
+	ErrorResponse
 	Subscribe      int    `json:"subscribe"`
 	OpenID         string `json:"openid"`
 	Language       string `json:"language"`
@@ -64,6 +65,7 @@ type GetUserInfoResp struct {
 	QrSceneStr     string `json:"qr_scene_str"`
 }
 type GetFollowUserListResp struct {
+	ErrorResponse
 	Total int64       `json:"total"`
 	Count int64       `json:"count"`
 	Data  *FollowData `json:"data"`
