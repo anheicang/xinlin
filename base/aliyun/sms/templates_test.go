@@ -20,6 +20,36 @@ func TestConfigRequiresNoBusinessTemplates(t *testing.T) {
 	}
 }
 
+// TestConfigLoadsOptionalTemplates 验证可选模板映射支持空集合和任意业务别名，不需要固定审核字段。
+func TestConfigLoadsOptionalTemplates(t *testing.T) {
+	for _, mapping := range []string{`{}`, `{"login_code":"SMS_LOGIN","custom_notice":"SMS_NOTICE"}`} {
+		var config AliyunSmsConfig
+		source := `{"regionId":"cn-hangzhou","accessKey":"test-id","accessSecret":"test-secret","signName":"test-sign","templates":` + mapping + `}`
+		if err := conf.LoadFromJsonBytes([]byte(source), &config); err != nil {
+			t.Fatal(err)
+		}
+		if mapping == `{}` {
+			if len(config.Templates) != 0 {
+				t.Fatal("空模板配置应保持为空")
+			}
+		} else if len(config.Templates) != 2 || config.Templates["login_code"] != "SMS_LOGIN" || config.Templates["custom_notice"] != "SMS_NOTICE" {
+			t.Fatalf("模板映射加载错误：%v", config.Templates)
+		}
+	}
+}
+
+// TestNestedSMSYAML 验证业务项目只声明 Sms 配置即可从嵌套 YAML 加载模板。
+func TestNestedSMSYAML(t *testing.T) {
+	var config struct{ Sms AliyunSmsConfig }
+	const source = "Sms:\n  RegionId: cn-hangzhou\n  AccessKey: test-id\n  AccessSecret: test-secret\n  SignName: test-sign\n  Templates:\n    login_code: SMS_LOGIN\n    custom_notice: SMS_NOTICE\n"
+	if err := conf.LoadFromYamlBytes([]byte(source), &config); err != nil {
+		t.Fatal(err)
+	}
+	if config.Sms.Templates["login_code"] != "SMS_LOGIN" || config.Sms.Templates["custom_notice"] != "SMS_NOTICE" {
+		t.Fatal("Sms.Templates 未正确加载")
+	}
+}
+
 // TestOneClientSendsMultipleTemplates 验证发送模板来自消息，而不是客户端默认模板或固定业务字段。
 func TestOneClientSendsMultipleTemplates(t *testing.T) {
 	client, err := NewSmsClient(AliyunSmsConfig{RegionId: "cn-hangzhou", AccessKey: "test-id", AccessSecret: "test-secret", SignName: "test-sign"})

@@ -7,7 +7,7 @@
 要求 Go 1.21.13 或以上版本。
 
 ```sh
-go get github.com/anheicang/xinlin@v0.2.0
+go get github.com/anheicang/xinlin@v0.2.1
 ```
 
 在业务项目中按需导入子包；`go get` 将组件作为依赖管理，源码由 Go module cache 管理，无需再复制到项目目录。如需将依赖源码随项目保存，可执行 `go mod vendor`。
@@ -74,24 +74,28 @@ go run ./examples/basic
 
 ## 多个短信模板
 
-`sms.AliyunSmsConfig` 只配置 `RegionId`、`AccessKey`、`AccessSecret` 和 `SignName`。模板属于业务项目，每次发送通过 `SmsMessage.TemplateCode` 指定，同一个客户端可发送不同模板。
+`sms.AliyunSmsConfig` 统一配置 `RegionId`、`AccessKey`、`AccessSecret`、`SignName` 和可选的 `Templates` 映射。模板别名由业务项目定义，每次发送通过 `SmsMessage.TemplateCode` 指定，同一个客户端可发送不同模板。
 
 业务项目可以在自己的配置结构中声明：
 
 ```go
-Sms          sms.AliyunSmsConfig
-SmsTemplates map[string]string `json:"smsTemplates,optional"`
+Sms sms.AliyunSmsConfig
 ```
 
 ```yaml
-SmsTemplates:
-  login_code: SMS_LOGIN
-  notice: SMS_NOTICE
+Sms:
+  RegionId: cn-hangzhou
+  AccessKey: "由业务配置注入"
+  AccessSecret: "由业务配置注入"
+  SignName: "已审核签名"
+  Templates:
+    login_code: SMS_LOGIN
+    notice: SMS_NOTICE
 ```
 
 ```go
 err := client.SendMessage(&sms.SmsMessage{
-    TemplateCode: config.SmsTemplates["login_code"],
+    TemplateCode: config.Sms.Templates["login_code"],
     Phone:        mobile,
     Content:      map[string]interface{}{"code": code},
 })
@@ -99,7 +103,7 @@ err := client.SendMessage(&sms.SmsMessage{
 
 不使用的场景无需配置；发送时缺失模板编号或接收人会直接返回错误。公共库不解释业务别名，不提供默认业务模板。
 
-从 `v0.1.x` 升级时，将 `Sms.TemplateCode` 等模板字段迁至业务项目的映射，并删除 `Sms.Scheme`；请求固定使用 HTTPS。客户端初始化仅依赖连接配置，不要求存在任何模板。
+从 `v0.1.x` 升级时，将 `Sms.TemplateCode` 等模板字段迁至 `Sms.Templates` 映射，并删除 `Sms.Scheme`；请求固定使用 HTTPS。使用 `v0.2.0` 顶层 `SmsTemplates` 示例的项目，应将映射移至 `Sms.Templates`。客户端初始化仅依赖连接配置，不要求存在任何模板。
 
 ## 接入约定
 
@@ -125,10 +129,10 @@ GitHub Actions 自动检查格式、依赖一致性、静态分析、竞态测�
 
 全部组件包均已补齐单元测试，总语句覆盖率为 98.1%。测试范围、覆盖率明细和报告生成方式见 [TESTING.md](TESTING.md)。
 
-发布使用语义化版本标签，例如 `v0.2.0`；项目中固定版本升级，避免依赖浮动分支：
+发布使用语义化版本标签，例如 `v0.2.1`；项目中固定版本升级，避免依赖浮动分支：
 
 ```sh
-go get github.com/anheicang/xinlin@v0.2.0
+go get github.com/anheicang/xinlin@v0.2.1
 go mod tidy
 ```
 

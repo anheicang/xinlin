@@ -1,5 +1,11 @@
 # 更新记录
 
+## v0.2.1
+
+- AliyunSmsConfig 新增可选 Templates 映射，统一承载短信连接配置与业务模板编号。
+- 业务项目直接使用 Config.Sms.Templates，不再需要单独声明顶层 SmsTemplates；模板别名仍由业务方自由定义。
+- 新增空模板映射、任意业务别名和嵌套模板配置加载测试；没有模板仍可初始化客户端。
+
 ## v0.2.0
 
 - 短信连接配置移除 TemplateCode、ShopAuditSuccessTemplateCode、ShopAuditFailTemplateCode 和 Scheme；仅保留区域、凭证与签名。
