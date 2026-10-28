@@ -30,7 +30,7 @@ go test -race ./...
 | 包 | 语句覆盖率 | 主要验证内容 |
 | --- | --- | --- |
 | base/aliyun/oss | 99.1% | 上传、下载、元信息、Bucket、签名 URL、STS、缓存刷新、并发和失败 |
-| base/aliyun/sms | 91.7% | SDK 请求初始化、HTTPS、模板参数、业务错误、网络错误、无效消息 |
+| base/aliyun/sms | 92.3% | SDK 请求初始化、HTTPS、无业务模板的配置、多模板发送、模板参数、业务错误、网络错误、无效消息 |
 | base/authentication | 95.8% | JWT、大整数 ID、过期与签名、身份匹配、权限、数据范围、会话与版本 |
 | base/baseerror | 100.0% | 错误字段、错误链、HTTP 状态、空错误、批处理短路 |
 | base/baseresponse | 100.0% | 成功、业务错误、异常、HTTP 状态、错误详情、旧接口与辅助函数 |

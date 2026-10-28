@@ -1,5 +1,14 @@
 # 更新记录
 
+## v0.2.0
+
+- 短信连接配置移除 TemplateCode、ShopAuditSuccessTemplateCode、ShopAuditFailTemplateCode 和 Scheme；仅保留区域、凭证与签名。
+- 每次发送通过 SmsMessage.TemplateCode 指定模板，同一个客户端可使用多个模板；业务别名及模板映射由业务项目维护。
+- 发送前拒绝空模板或空接收人，HTTPS 保持固定启用。
+- 新增无业务模板的 go-zero 配置加载、多模板发送及参数缺失的离线测试。
+
+此版本删除了公开配置字段，因此发布为 v0.2.0。升级时应同步迁移业务配置和引用旧字段的调用代码，参见 README。
+
 ## v0.1.4
 
 - 删除模块根目录及各组件包中的 doc.go，保留源码、函数、字段及测试用途注释。

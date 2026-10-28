@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/dysmsapi"
 	"github.com/zeromicro/go-zero/core/logx"
@@ -37,6 +38,9 @@ func NewSmsClient(c AliyunSmsConfig) (*AliyunSmsClient, error) {
 func (client *AliyunSmsClient) SendMessage(message *SmsMessage) error {
 	if client == nil || client.Client == nil || client.Config == nil || message == nil {
 		return errors.New("invalid SMS client or message")
+	}
+	if strings.TrimSpace(message.TemplateCode) == "" || strings.TrimSpace(message.Phone) == "" {
+		return errors.New("SMS template code and phone are required")
 	}
 	content, err := json.Marshal(message.Content)
 	if err != nil {

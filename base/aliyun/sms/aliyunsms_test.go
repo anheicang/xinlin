@@ -44,7 +44,7 @@ func TestSendMessageInitializesSDKAndChecksBusinessCode(t *testing.T) {
 				t.Fatal("upstream detail leaked")
 			}
 			client.Client.SetTransport(smsTransport(func(*http.Request) (*http.Response, error) { return nil, errors.New("transport failed") }))
-			if err := client.SendMessage(&SmsMessage{}); err == nil {
+			if err := client.SendMessage(&SmsMessage{TemplateCode: "test-template", Phone: "test-phone"}); err == nil {
 				t.Fatal("transport error hidden")
 			}
 		})
@@ -64,7 +64,7 @@ func TestInvalidSMSMessageContent(t *testing.T) {
 	if err := c.SendMessage(nil); err == nil {
 		t.Fatal("nil message accepted")
 	}
-	if err := c.SendMessage(&SmsMessage{Content: map[string]interface{}{"invalid": make(chan int)}}); err == nil {
+	if err := c.SendMessage(&SmsMessage{TemplateCode: "test-template", Phone: "test-phone", Content: map[string]interface{}{"invalid": make(chan int)}}); err == nil {
 		t.Fatal("non-serializable content accepted")
 	}
 }
