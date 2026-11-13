@@ -1,6 +1,6 @@
 # 单元测试
 
-所有 12 个基础组件包均有单元测试，所有可执行函数均被测试调用。默认测试不依赖真实 Redis、MySQL、阿里云或微信账号，不执行付费操作。
+所有 13 个基础组件包均有单元测试，所有可执行函数均被测试调用。默认测试不依赖真实 Redis、MySQL、阿里云、微信账号或 Magpie，不执行付费操作。
 
 ## 运行
 
@@ -25,7 +25,7 @@ go test -race ./...
 
 ## 当前覆盖率
 
-本次全量运行的总语句覆盖率为 **98.1%**（包含示例程序）。
+本次全量运行的总语句覆盖率为 **98.4%**（包含示例程序）。
 
 | 包 | 语句覆盖率 | 主要验证内容 |
 | --- | --- | --- |
@@ -35,6 +35,7 @@ go test -race ./...
 | base/baseerror | 100.0% | 错误字段、错误链、HTTP 状态、空错误、批处理短路 |
 | base/baseresponse | 100.0% | 成功、业务错误、异常、HTTP 状态、错误详情、旧接口与辅助函数 |
 | base/kd100 | 97.5% | 请求签名、参数校验、状态解析、轨迹时间、网络和响应异常 |
+| base/magpie | 100.0% | 嵌套配置、模型覆盖、零值参数、工具/多模态透传、JSON/截断、模型查询、SSE/断流、超限、结构化错误、重试/取消/超时、并发复用及示例 |
 | base/phone | 100.0% | Unicode 空白、搜索字符串、保留有效字符 |
 | base/points | 100.0% | 金额格式、精度、最大值、负值显示、比例和溢出边界 |
 | base/proto | 100.0% | JSON 字段、HTTP 状态及 Content-Type |
@@ -50,6 +51,7 @@ go test -race ./...
 
 - Redis 使用 miniredis，验证 TTL、故障、Lua 脚本和并发递增。
 - 云接口使用 SDK 工厂替换或 HTTP RoundTripper，断言实际请求与响应，阻止真实外部请求。
+- Magpie 使用 httptest 本地网关和注入 Transport，验证真实请求协议、增量事件和故障；不要求运行本机 Magpie，不消耗模型额度。
 - 需要替换包内工厂、日志输出或随机源的测试不调用 t.Parallel，并通过 Cleanup 恢复状态；STS 并发测试会等待全部 goroutine 结束。
 - 默认跳过 TestGetOssSts 的真实 STS 集成测试；只有显式设置 XINLIN_OSS_STS_INTEGRATION=1 与 XINLIN_OSS_CONFIG_FILE 才会执行。
 

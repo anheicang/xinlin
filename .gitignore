@@ -9,3 +9,4 @@ logs/
 *_local.yaml
 go.work
 go.work.sum
+/.idea/

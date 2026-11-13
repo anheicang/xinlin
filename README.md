@@ -34,11 +34,14 @@ import (
 | `secretbox` | AES-256-GCM 加密与用途绑定 |
 | `safelog` | go-zero 安全访问日志和 SQL 参数日志关闭 |
 | `kd100` | 快递100查询、签名与轨迹时间解析 |
+| `magpie` | Magpie/OpenAI 兼容网关对话、JSON 输出、SSE 流、工具协议及模型查询（未发布） |
 | `aliyun/oss` | OSS 上传、STS 临时凭证和缓存 |
 | `aliyun/sms` | 阿里云短信客户端 |
 | `wx/wxapi` | 微信登录、手机号、订阅消息、内容检测及公众号接口 |
 
-`phone`、`points`、`secretbox` 仅使用标准库；其他组件按需使用 go-zero 或供应商 SDK。模块只声明这些组件实际需要的依赖，不携带原服务入口、model、数据库或业务配置。
+`phone`、`points`、`secretbox`、`magpie` 的实现仅使用标准库；其他组件按需使用 go-zero 或供应商 SDK。模块只声明这些组件实际需要的依赖，不携带原服务入口、model、数据库或业务配置。
+
+Magpie 的配置、JSON/流式调用、工具与多模态扩展、错误及重试说明见 [接入文档](base/magpie/README.md)。新组件尚未包含在已发布的 `v0.2.1` 中。
 
 ## 使用示例
 
@@ -127,7 +130,7 @@ go build ./...
 
 GitHub Actions 自动检查格式、依赖一致性、静态分析、竞态测试及编译。普通测试使用本地 HTTP 服务或模拟数据，不需要真实云服务凭证。真实 STS 测试默认跳过，只有设置 `XINLIN_OSS_STS_INTEGRATION=1` 和 `XINLIN_OSS_CONFIG_FILE`（包含 `Oss` 节点的本地 YAML 路径）才会调用阿里云。
 
-全部组件包均已补齐单元测试，总语句覆盖率为 98.1%。测试范围、覆盖率明细和报告生成方式见 [TESTING.md](TESTING.md)。
+全部组件包均已补齐单元测试，总语句覆盖率为 98.4%。测试范围、覆盖率明细和报告生成方式见 [TESTING.md](TESTING.md)。
 
 发布使用语义化版本标签，例如 `v0.2.1`；项目中固定版本升级，避免依赖浮动分支：
 
