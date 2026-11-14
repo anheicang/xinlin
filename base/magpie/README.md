@@ -112,3 +112,5 @@ err := client.Stream(ctx, request, func(chunk magpie.ChatChunk) error {
 4. 将原来业务层的重试移除或关闭，避免与公共库重试叠加。
 
 本次仅新增基础库组件，未改动 wowAnalysis 项目。离线测试执行 `go test ./base/magpie`，不访问真实 Magpie，也不产生模型调用费用。
+
+专门的图像生成使用 `GenerateImage`，固定请求/返回及边界见 [生图协议](IMAGES.md)。
